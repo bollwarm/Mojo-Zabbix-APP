@@ -67,8 +67,14 @@ Warning info of Triggers
 2016-10-19 19:12:53  : 192.168.3.* : 磁盘sda IO利用率超过95%
 2016-10-19 18:03:03  : 192.168.4.* : Too many processes on {HOST.NAME}
 
+more example/example.pl
 
 INSTALLATION
+
+You can easyly install this modue use perl packages like cpanm
+
+cpanm Mojo::Mojo::APP
+
 
 To install this module, run the following commands:
 

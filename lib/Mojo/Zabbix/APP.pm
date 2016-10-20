@@ -15,8 +15,8 @@ our @EXPORT  = qw(initZ pVersion getAllhost  pHitems pTriggers );
 
 =head1 NAME
 
-Mojo::Zabbix::APP - The application of Mojo-Zabbix module。
-Get data from zabbix data include host，items, Triggers and warns and so on.
+Mojo::Zabbix::APP - The application of Mojo-Zabbix module.
+Get data from zabbix data include host,items, Triggers and warns and so on.
 
 
 =head1 VERSION
