@@ -3,6 +3,7 @@ package Mojo::Zabbix::APP;
 use strict;
 use warnings;
 use Mojo::Zabbix;
+use utf8;
 binmode( STDIN,  ':encoding(utf8)' );
 binmode( STDOUT, ':encoding(utf8)' );
 binmode( STDERR, ':encoding(utf8)' );
@@ -11,27 +12,24 @@ use POSIX qw(strftime);
 require Exporter;
 
 our @ISA     = qw(Exporter);
-our @EXPORT  = qw(initZ pVersion getAllhost  pHitems pTriggers );
+our @EXPORT  = qw(initZ pVersion getAllhost pHitems pTriggers);
 
 =head1 NAME
 
-Mojo::Zabbix::APP - The application of Mojo-Zabbix module.
-Get data from zabbix data include host,items, Triggers and warns and so on.
+Mojo::Zabbix::APP - The application module of Mojo-Zabbix .Using to get
+data from zabbix data include host,items, Triggers and warns and so on.
 
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 
 =head1 SYNOPSIS
-
-Quick summary of what the module does.
-
 
     use Mojo::Zabbix::APP;
 
@@ -42,7 +40,7 @@ Quick summary of what the module does.
    my $DEBUG=0;
    my $TRACE=0;
 
-#my @myzinfo = ('test1  http://test1/zabbix    testuser pass');
+#my @myzinfo = ('test1 http://test1/zabbix testuser pass');
 # @可以定义为多行数据，格式按照这种，一个zabbix 服务地址一个
 
   for (@myzinfo) {
@@ -81,7 +79,9 @@ Quick summary of what the module does.
 =cut
 
 #### 初始化的Mojo::zabbix ，必须安装Mojo::zabbix模块,可用cpanm Mojo::zabbix 安装
-
+my %EVcache;
+my %HTcache;
+## 缓存hash 对事件id进行缓存，防止重复调用
 my $DEBUG=0;
 sub initZ {
     
@@ -237,16 +237,20 @@ sub getHisv {
 sub gethostID {
 
     my ( $z, $host ) = @_;
-    print "DEBUG-function(gethostID): $z, $host \n" if $DEBUG;
-    my $r = $z->get("host",
+    my $ckey=$host;
+    unless(exists $HTcache{$ckey}) {
+     print "DEBUG-function(gethostID): $z, $host \n" if $DEBUG;
+     my $r = $z->get("host",
         {
             filter => {
                 host => $host,
             },
             output => ["hostid"],
         },
-    );
-    return $r->{'result'}->[0]->{'hostid'};
+     );
+      $HTcache{$ckey}=$r->{'result'}->[0]->{'hostid'} if $r->{'result'};
+    }
+    return $HTcache{$ckey};
 }
 
 #### 获取所有的主机列表
@@ -307,15 +311,15 @@ sub getTriggers {
 }
 
 ### 给定触发器，触发器处罚时间(限制24小时候内的).
-
 sub getTgtime {
 
     my ( $z, $tgid, $host ) = @_;
-
+   
     my $hostid=gethostID($z,$host);
-
     my $ysterday = time() - 24 * 3600;
-    my $r        = $z->get(
+    my $vkey=$tgid.$hostid;
+    unless(exists $EVcache{$vkey}) {
+     my $r        = $z->get(
         "event",
         {
             filter => {
@@ -328,23 +332,21 @@ sub getTgtime {
 
             objectids  => $tgid,
             triggerids => $tgid,
-            time_from  => "$ysterday",
-
+            time_from  => $ysterday,
             hostids => $hostid,
-            select_acknowledges => "extend",
+            #select_acknowledges => "extend",
             output              => "extend",
 
-            #objectids  => $tgid ,
-            #sortfield =>["clock", "eventid"],
-            #sortorder => "DESC",
+            sortfield =>"eventid",
+            sortorder => "DESC",
             #  expandData=>"host",
 
         },
     );
-    return $r->{'result'}->[0]->{'clock'} if $r;
-    return 0;
+    $EVcache{$vkey}=$r->{'result'}->[0]->{'clock'} if $r->{'result'};
+   }
+   return $EVcache{$vkey};
 }
-
 sub getEvent {
     my $z        = shift;
     my $ysterday = time() - 1 * 3600;

@@ -1,5 +1,10 @@
 Revision history for Mojo-Zabbix-APP
 
+0.02    2016-10-21/15
+
+* Add caching for get even and host request,speed up the process. 
+* Options some request parameters.
+
 0.01    2016-10-20/19
        
 * First version, released on an unsuspecting world.
