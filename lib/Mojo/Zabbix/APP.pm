@@ -4,15 +4,13 @@ use strict;
 use warnings;
 use Mojo::Zabbix;
 use utf8;
-binmode( STDIN,  ':encoding(utf8)' );
-binmode( STDOUT, ':encoding(utf8)' );
-binmode( STDERR, ':encoding(utf8)' );
+
 use POSIX qw(strftime);
 
 require Exporter;
 
 our @ISA     = qw(Exporter);
-our @EXPORT  = qw(initZ pVersion getAllhost pHitems pTriggers);
+our @EXPORT  = qw(initZ pVersion getAllhost getname getItem pHitems pTriggers);
 
 =head1 NAME
 
@@ -22,11 +20,11 @@ data from zabbix data include host,items, Triggers and warns and so on.
 
 =head1 VERSION
 
-Version 0.02
+Version 0.03
 
 =cut
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 
 =head1 SYNOPSIS
@@ -83,6 +81,7 @@ my %EVcache;
 my %HTcache;
 ## 缓存hash 对事件id进行缓存，防止重复调用
 my $DEBUG=0;
+my $TRACE=0;
 sub initZ {
     
     my ( $url, $user, $pass ) = @_;
@@ -91,8 +90,8 @@ sub initZ {
         url      => $url,
         username => $user,
         password => $pass,
-        debug    => 0,
-        trace    => 0,
+        debug    => $DEBUG,
+        trace    => $TRACE,
     );
 
 }
@@ -107,7 +106,7 @@ sub  pVersion {
     );
 
     my $result = $r->{'result'};
-    print $result,"\n";
+    return $result,"\n";
 }
 
 
@@ -120,9 +119,10 @@ sub  pHitems {
      $key //='net.if.in[bond0]';
      $btime //= time() - 1 * 3600;
      $ltime //= time();
+     my $info;
      my $hostid = gethostID( $z, $host );
      my ($name,$itemid) = getItemID( $z, $hostid, $key );
-     print "The Item of $name-$key \n\n";
+     $info="The Item of $name-$key \n\n";
      print "debug-PHitems { parameter } : $host $key $btime $ltime \n" if $DEBUG;
      my $v =getHisv( $z, $hostid, $itemid, $btime,$ltime);
 
@@ -130,10 +130,10 @@ sub  pHitems {
 
             #print Dumper($_);
             my $stime = strftime( "%Y-%m-%d %H:%M:%S", localtime( $_->[0] ) );
-            print "$stime  $_->[1] \n";
+            $info.= "$stime  $_->[1] \n";
 
         }
-     print "\n";
+     return $info;
 }
 
 ### 打印取得的所有触发器告警信息
@@ -141,16 +141,15 @@ sub  pHitems {
 sub pTriggers {
 
     my $z=shift;
+    my $info;
     my $reslut = getTriggers($z);
-    print "\nWarning info of Triggers \n\n";
+    $info="\nWarning info of Triggers \n\n";
     for ( sort { $b <=> $a } keys %{$reslut} ) {
 
-        print "$reslut->{$_}";
+        $info.= "$reslut->{$_}";
 
     }
-
-    print "\n";
-
+   return $info;
 }
 ##### 获取给定主机和key值的所有监控项以及当前值
 
@@ -158,6 +157,11 @@ sub pTriggers {
 sub getItem {
 
     my ( $z, $host, $key ) = @_;
+
+######bug fox : retun if host not exist 
+
+    return unless gethostID( $z, $host );
+  
     my $hostid =gethostID( $z, $host );
     my $r = $z->get(
         "item",
@@ -253,6 +257,21 @@ sub gethostID {
     return $HTcache{$ckey};
 }
 
+sub getname {
+
+    my ( $z, $host ) = @_;
+     print "DEBUG-function(gethostname): $z, $host \n" if $DEBUG;
+     my $r = $z->get("host",
+        {
+            filter => {
+                host => $host,
+            },
+            output => ["name"],
+        },
+     );
+      #use Data::Dumper;
+      return $r->{'result'}->[0]->{'name'} if $r->{'result'};
+}
 #### 获取所有的主机列表
 
 sub getAllhost {
@@ -262,14 +281,14 @@ sub getAllhost {
         {
             filter => undef,
             search => undef,
-            output => ["host"],
+            output => ["host","name"],
         },
     );
 
     my $hresult;
     my $host = $r->{'result'};
     for (@$host) {
-        $hresult .= $_->{'host'} . "\n";
+        $hresult .= $_->{'host'} .": $_->{'name'}". "\n";
     }
 
     return $hresult;
