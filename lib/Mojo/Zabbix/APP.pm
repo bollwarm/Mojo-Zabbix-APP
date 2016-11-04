@@ -9,8 +9,8 @@ use POSIX qw(strftime);
 
 require Exporter;
 
-our @ISA     = qw(Exporter);
-our @EXPORT  = qw(initZ pVersion getAllhost getname getItem pHitems pTriggers);
+our @ISA    = qw(Exporter);
+our @EXPORT = qw(initZ pVersion getAllhost getname getItem pHitems pTriggers);
 
 =head1 NAME
 
@@ -25,7 +25,6 @@ Version 0.03
 =cut
 
 our $VERSION = '0.03';
-
 
 =head1 SYNOPSIS
 
@@ -80,10 +79,11 @@ our $VERSION = '0.03';
 my %EVcache;
 my %HTcache;
 ## 缓存hash 对事件id进行缓存，防止重复调用
-my $DEBUG=0;
-my $TRACE=0;
+my $DEBUG = 0;
+my $TRACE = 0;
+
 sub initZ {
-    
+
     my ( $url, $user, $pass ) = @_;
     print "debug-initZ { parameter } : $url, $user, $pass \n" if $DEBUG;
     my $zbbix = Mojo::Zabbix->new(
@@ -98,71 +98,66 @@ sub initZ {
 
 ### 打印zabbix 版本
 
-sub  pVersion {
+sub pVersion {
 
-    my $z=shift;
-    my $r = $z->get(
-       "apiinfo.version",
-    );
+    my $z = shift;
+    my $r = $z->get( "apiinfo.version", );
 
     my $result = $r->{'result'};
-    return $result,"\n";
+    return $result, "\n";
 }
 
-
-
 ### 打印给定时间段的item历史数据，如果默认不给时间默认为过去24小时内的
-sub  pHitems {
-     
-     my ($z,$host,$key,$btime,$ltime)=@_;
-     $host  //= '192.168.1.1';
-     $key //='net.if.in[bond0]';
-     $btime //= time() - 1 * 3600;
-     $ltime //= time();
-     my $info;
-     my $hostid = gethostID( $z, $host );
-     my ($name,$itemid) = getItemID( $z, $hostid, $key );
-     $info="The Item of $name-$key \n\n";
-     print "debug-PHitems { parameter } : $host $key $btime $ltime \n" if $DEBUG;
-     my $v =getHisv( $z, $hostid, $itemid, $btime,$ltime);
+sub pHitems {
 
-        for ( sort {$b <=> $a} @{$v} ) {
+    my ( $z, $host, $key, $btime, $ltime ) = @_;
+    $host  //= '192.168.1.1';
+    $key   //= 'net.if.in[bond0]';
+    $btime //= time() - 1 * 3600;
+    $ltime //= time();
+    my $info;
+    my $hostid = gethostID( $z, $host );
+    my ( $name, $itemid ) = getItemID( $z, $hostid, $key );
+    $info = "The Item of $name-$key \n\n";
+    print "debug-PHitems { parameter } : $host $key $btime $ltime \n" if $DEBUG;
+    my $v = getHisv( $z, $hostid, $itemid, $btime, $ltime );
 
-            #print Dumper($_);
-            my $stime = strftime( "%Y-%m-%d %H:%M:%S", localtime( $_->[0] ) );
-            $info.= "$stime  $_->[1] \n";
+    for ( sort { $b <=> $a } @{$v} ) {
 
-        }
-     return $info;
+        #print Dumper($_);
+        my $stime = strftime( "%Y-%m-%d %H:%M:%S", localtime( $_->[0] ) );
+        $info .= "$stime  $_->[1] \n";
+
+    }
+    return $info;
 }
 
 ### 打印取得的所有触发器告警信息
 
 sub pTriggers {
 
-    my $z=shift;
+    my $z = shift;
     my $info;
     my $reslut = getTriggers($z);
-    $info="\nWarning info of Triggers \n\n";
+    $info = "\nWarning info of Triggers \n\n";
     for ( sort { $b <=> $a } keys %{$reslut} ) {
 
-        $info.= "$reslut->{$_}";
+        $info .= "$reslut->{$_}";
 
     }
-   return $info;
+    return $info;
 }
 ##### 获取给定主机和key值的所有监控项以及当前值
-
 
 sub getItem {
 
     my ( $z, $host, $key ) = @_;
 
-######bug fox : retun if host not exist 
+######bug fox : retun if host not exist
 
     return unless gethostID( $z, $host );
-  
-    my $hostid =gethostID( $z, $host );
+
+    my $hostid = gethostID( $z, $host );
     my $r = $z->get(
         "item",
         {
@@ -170,6 +165,7 @@ sub getItem {
             output => [ "name", "key_", "prevvalue" ],
             search  => { "key_" => $key },
             hostids => $hostid,
+
             #    limit => 10,
 
         },
@@ -187,12 +183,12 @@ sub getItem {
 sub getItemID {
 
     my ( $z, $hostid, $key ) = @_;
-    print "DEBUG-function(getItemID): $z, $key \n"  if $DEBUG;
+    print "DEBUG-function(getItemID): $z, $key \n" if $DEBUG;
     my $r = $z->get(
         "item",
         {
 
-            output  => ["itemids","name"],
+            output => [ "itemids", "name" ],
             search  => { "key_" => $key },
             hostids => $hostid,
 
@@ -203,14 +199,15 @@ sub getItemID {
     my $sresult;
 
     $sresult = $result->[0]->{'itemid'};
-  
-    return ($result->[0]->{'name'},$result->[0]->{'itemid'});
+
+    return ( $result->[0]->{'name'}, $result->[0]->{'itemid'} );
 }
 
 sub getHisv {
 
     my ( $z, $hostid, $itemid, $btime, $ltime ) = @_;
-    print "DEBUG-function(-getHist): $z, $hostid, $itemid, $btime, $ltime \n"  if $DEBUG;
+    print "DEBUG-function(-getHist): $z, $hostid, $itemid, $btime, $ltime \n"
+      if $DEBUG;
     my $r = $z->get(
         "history",
         {
@@ -241,18 +238,19 @@ sub getHisv {
 sub gethostID {
 
     my ( $z, $host ) = @_;
-    my $ckey=$host;
-    unless(exists $HTcache{$ckey}) {
-     print "DEBUG-function(gethostID): $z, $host \n" if $DEBUG;
-     my $r = $z->get("host",
-        {
-            filter => {
-                host => $host,
+    my $ckey = $host;
+    unless ( exists $HTcache{$ckey} ) {
+        print "DEBUG-function(gethostID): $z, $host \n" if $DEBUG;
+        my $r = $z->get(
+            "host",
+            {
+                filter => {
+                    host => $host,
+                },
+                output => ["hostid"],
             },
-            output => ["hostid"],
-        },
-     );
-      $HTcache{$ckey}=$r->{'result'}->[0]->{'hostid'} if $r->{'result'};
+        );
+        $HTcache{$ckey} = $r->{'result'}->[0]->{'hostid'} if $r->{'result'};
     }
     return $HTcache{$ckey};
 }
@@ -260,35 +258,38 @@ sub gethostID {
 sub getname {
 
     my ( $z, $host ) = @_;
-     print "DEBUG-function(gethostname): $z, $host \n" if $DEBUG;
-     my $r = $z->get("host",
+    print "DEBUG-function(gethostname): $z, $host \n" if $DEBUG;
+    my $r = $z->get(
+        "host",
         {
             filter => {
                 host => $host,
             },
             output => ["name"],
         },
-     );
-      #use Data::Dumper;
-      return $r->{'result'}->[0]->{'name'} if $r->{'result'};
+    );
+
+    #use Data::Dumper;
+    return $r->{'result'}->[0]->{'name'} if $r->{'result'};
 }
 #### 获取所有的主机列表
 
 sub getAllhost {
 
     my $z = shift;
-    my $r = $z->get("host",
+    my $r = $z->get(
+        "host",
         {
             filter => undef,
             search => undef,
-            output => ["host","name"],
+            output => [ "host", "name" ],
         },
     );
 
     my $hresult;
     my $host = $r->{'result'};
     for (@$host) {
-        $hresult .= $_->{'host'} .": $_->{'name'}". "\n";
+        $hresult .= $_->{'host'} . ": $_->{'name'}" . "\n";
     }
 
     return $hresult;
@@ -333,39 +334,42 @@ sub getTriggers {
 sub getTgtime {
 
     my ( $z, $tgid, $host ) = @_;
-   
-    my $hostid=gethostID($z,$host);
+
+    my $hostid   = gethostID( $z, $host );
     my $ysterday = time() - 24 * 3600;
-    my $vkey=$tgid.$hostid;
-    unless(exists $EVcache{$vkey}) {
-     my $r        = $z->get(
-        "event",
-        {
-            filter => {
+    my $vkey     = $tgid . $hostid;
+    unless ( exists $EVcache{$vkey} ) {
+        my $r = $z->get(
+            "event",
+            {
+                filter => {
 
-                # value => 1,
-                # objectids => '19011' ,
-                # triggerids  => '19011' ,
-                #source  => 0,
+                    # value => 1,
+                    # objectids => '19011' ,
+                    # triggerids  => '19011' ,
+                    #source  => 0,
+                },
+
+                objectids  => $tgid,
+                triggerids => $tgid,
+                time_from  => $ysterday,
+                hostids    => $hostid,
+
+                #select_acknowledges => "extend",
+                output => "extend",
+
+                sortfield => "eventid",
+                sortorder => "DESC",
+
+                #  expandData=>"host",
+
             },
-
-            objectids  => $tgid,
-            triggerids => $tgid,
-            time_from  => $ysterday,
-            hostids => $hostid,
-            #select_acknowledges => "extend",
-            output              => "extend",
-
-            sortfield =>"eventid",
-            sortorder => "DESC",
-            #  expandData=>"host",
-
-        },
-    );
-    $EVcache{$vkey}=$r->{'result'}->[0]->{'clock'} if $r->{'result'};
-   }
-   return $EVcache{$vkey};
+        );
+        $EVcache{$vkey} = $r->{'result'}->[0]->{'clock'} if $r->{'result'};
+    }
+    return $EVcache{$vkey};
 }
+
 sub getEvent {
     my $z        = shift;
     my $ysterday = time() - 1 * 3600;
@@ -419,7 +423,8 @@ sub getAlert {
     );
     my $host    = $r;
     my $hresult = Dumper($r);
-  #  print $hresult;
+
+    #  print $hresult;
     return $hresult;
 }
 

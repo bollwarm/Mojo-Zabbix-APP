@@ -14,10 +14,11 @@ Mojo::Zabix:APP  - 是Mojo::Zabix模块的应用模块，对zabbix api常见模�
     my @myzinfo = <DATA>; ##(get zabbix info from __DATA__ )
 
 # Define for debug and traceing processe infomaition。（打开调试和跟踪）
+
   my $DEBUG=0;
   my $TRACE=0;
 
-#my @myzinfo = ('test1  http://test1/zabbix    testuser pass');
+# my @myzinfo = ('test1  http://test1/zabbix    testuser pass');
 # @可以定义为多行数据，格式按照这种，一个zabbix 服务地址一个
 
   for (@myzinfo) {
