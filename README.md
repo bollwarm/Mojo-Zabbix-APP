@@ -15,7 +15,7 @@ Get data from zabbix data include host，items, Triggers and warns and so on.
 
      my @myzinfo = <DATA>; ##(get zabbix info from __DATA__ )
 
-# Define for debug and traceing processe infomaition。（打开调试和跟踪）
+#### Define for debug and traceing processe infomaition。（打开调试和跟踪）
 
     my $DEBUG=0;
     my $TRACE=0;
@@ -95,20 +95,21 @@ perldoc command.
 
 You can also look for information at:
 
-    RT, CPAN's request tracker (report bugs here)
-        http://rt.cpan.org/NoAuth/Bugs.html?Dist=Mojo-Zabbix-APP
+### RT, CPAN's request tracker (report bugs here)
+  
+      http://rt.cpan.org/NoAuth/Bugs.html?Dist=Mojo-Zabbix-APP
 
-    AnnoCPAN, Annotated CPAN documentation
-        http://annocpan.org/dist/Mojo-Zabbix-APP
+### AnnoCPAN, Annotated CPAN documentation
+   
+     http://annocpan.org/dist/Mojo-Zabbix-APP
 
-    CPAN Ratings
+###  CPAN Ratings
         http://cpanratings.perl.org/d/Mojo-Zabbix-APP
-
-    Search CPAN
+### Search CPAN
         http://search.cpan.org/dist/Mojo-Zabbix-APP/
-    GitHub
+### GitHub
        https://github.com/bollwarm/Mojo-Zabbix-APP
-    Oschina
+### Oschina
        https://git.oschina.net/ijz/Mojo-Zabbix-APP 
 
 
