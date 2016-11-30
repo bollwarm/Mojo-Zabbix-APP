@@ -1,5 +1,8 @@
 Revision history for Mojo-Zabbix-APP
 
+0.04    2016-11-30/18
+* pod erro fix
+
 0.03    2016-10-26/18
 
 * getItem() bug fox: return all hosts items when hosts not exist.

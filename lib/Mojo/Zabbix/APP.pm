@@ -12,6 +12,8 @@ require Exporter;
 our @ISA    = qw(Exporter);
 our @EXPORT = qw(initZ pVersion getAllhost getname getItem pHitems pTriggers);
 
+=encoding utf8
+
 =head1 NAME
 
 Mojo::Zabbix::APP - The application module of Mojo-Zabbix .Using to get
@@ -20,11 +22,11 @@ data from zabbix data include host,items, Triggers and warns and so on.
 
 =head1 VERSION
 
-Version 0.03
+Version 0.04
 
 =cut
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 =head1 SYNOPSIS
 
@@ -153,10 +155,7 @@ sub getItem {
 
     my ( $z, $host, $key ) = @_;
 
-######bug fox : retun if host not exist
-
     return unless gethostID( $z, $host );
-
     my $hostid = gethostID( $z, $host );
     my $r = $z->get(
         "item",
@@ -405,26 +404,14 @@ sub getAlert {
     my $r        = $z->get(
         "alert",
         {
-            #filter => {
-            # value => 1,
-            #time_from=> "$ysterday",
-            #},
-            #time_from=> "$ysterday",
-            # actionids =>"3",
             output => "extend",
-
-            #source => 0 ,
             sortfield => ["clock"],
             sortorder => "DESC",
-
-            #  expandData=>"host",
 
         },
     );
     my $host    = $r;
     my $hresult = Dumper($r);
-
-    #  print $hresult;
     return $hresult;
 }
 
