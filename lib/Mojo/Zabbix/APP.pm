@@ -111,7 +111,6 @@ sub pVersion {
 
 ### 打印给定时间段的item历史数据，如果默认不给时间默认为过去24小时内的
 sub pHitems {
-
     my ( $z, $host, $key, $btime, $ltime ) = @_;
     $host  //= '192.168.1.1';
     $key   //= 'net.if.in[bond0]';
@@ -235,7 +234,6 @@ sub getHisv {
 
 #### 获取给定主机（ip）的主机号
 sub gethostID {
-
     my ( $z, $host ) = @_;
     my $ckey = $host;
     unless ( exists $HTcache{$ckey} ) {
@@ -298,7 +296,7 @@ sub getAllhost {
 
 sub getTriggers {
     my $z        = shift;
-    my $ysterday = time() - 24 * 3600;
+    my $ysterday = time() - 15 * 3600;
     my $r        = $z->get(
         "trigger",
         {
@@ -335,7 +333,7 @@ sub getTgtime {
     my ( $z, $tgid, $host ) = @_;
 
     my $hostid   = gethostID( $z, $host );
-    my $ysterday = time() - 24 * 3600;
+    my $ysterday = time() - 15 * 3600;
     my $vkey     = $tgid . $hostid;
     unless ( exists $EVcache{$vkey} ) {
         my $r = $z->get(
