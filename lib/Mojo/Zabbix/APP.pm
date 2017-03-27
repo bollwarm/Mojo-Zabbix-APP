@@ -10,7 +10,7 @@ use POSIX qw(strftime);
 require Exporter;
 
 our @ISA    = qw(Exporter);
-our @EXPORT = qw(initZ pVersion getAllhost getname getItem pHitems pTriggers);
+our @EXPORT = qw(initZ pVersion getAllhost getname getItem getAlert  getEvents pHitems pTriggers);
 
 =encoding utf8
 
@@ -22,11 +22,11 @@ data from zabbix data include host,items, Triggers and warns and so on.
 
 =head1 VERSION
 
-Version 0.04
+Version 0.05
 
 =cut
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 =head1 SYNOPSIS
 
@@ -80,6 +80,7 @@ our $VERSION = '0.04';
 #### 初始化的Mojo::zabbix ，必须安装Mojo::zabbix模块,可用cpanm Mojo::zabbix 安装
 my %EVcache;
 my %HTcache;
+my %Vcache;
 ## 缓存hash 对事件id进行缓存，防止重复调用
 my $DEBUG = 0;
 my $TRACE = 0;
@@ -95,18 +96,34 @@ sub initZ {
         debug    => $DEBUG,
         trace    => $TRACE,
     );
-
 }
 
 ### 打印zabbix 版本
 
 sub pVersion {
 
+   my $z = shift;
+   my $ckey=$z->{'API_URL'};
+  unless ( exists $Vcache{$ckey} ) {
+    my $result;
+    my $auth=$z->{'Auth'};
+    $z->{'Auth'}="";
+    my $r = $z->get( "apiinfo.version", );
+     $z->{'Auth'}=$auth;
+     $result = $r->{'result'} if $r->{'result'};
+     $result = pVersion2($z) unless $r->{'result'};
+
+     $Vcache{$ckey} = $result;
+   }
+    return $Vcache{$ckey};
+}
+
+sub pVersion2 {
+
     my $z = shift;
     my $r = $z->get( "apiinfo.version", );
-
     my $result = $r->{'result'};
-    return $result, "\n";
+    return $result;
 }
 
 ### 打印给定时间段的item历史数据，如果默认不给时间默认为过去24小时内的
@@ -140,7 +157,8 @@ sub pTriggers {
     my $z = shift;
     my $info;
     my $reslut = getTriggers($z);
-    $info = "\nWarning info of Triggers \n\n";
+    $info = "\n\nWarning info of Triggers \n\n";
+
     for ( sort { $b <=> $a } keys %{$reslut} ) {
 
         $info .= "$reslut->{$_}";
@@ -199,6 +217,24 @@ sub getItemID {
     $sresult = $result->[0]->{'itemid'};
 
     return ( $result->[0]->{'name'}, $result->[0]->{'itemid'} );
+}
+
+sub getHost {
+
+    my ( $z, $hostid) = @_;
+    my $r = $z->get(
+        "host",
+        {
+     
+            hostids => $hostid,
+            output=> ["host"],
+
+        },
+    );
+
+return  $r->{'result'}->[0]->{host} if $r->{'result'};
+
+
 }
 
 sub getHisv {
@@ -292,48 +328,98 @@ sub getAllhost {
     return $hresult;
 }
 
+sub getAllhostid {
+
+    my $z = shift;
+    my $hostsids;
+    my $r = $z->get(
+        "host",
+        {
+            filter => undef,
+            search => undef,
+            output => [ "hostid" ],
+        },
+    );
+
+    my $hresult;
+    my $host = $r->{'result'};
+    for (@$host) {
+        push(@{$hostsids},$_->{'hostid'});
+    }
+
+    return $hostsids;;
+}
+
 ####获取所有的有问题触发警告信息,返回一个包含时间、主机ip和描述的哈希引用
 
 sub getTriggers {
     my $z        = shift;
-    my $ysterday = time() - 15 * 3600;
-    my $r        = $z->get(
-        "trigger",
-        {
+    my $V=pVersion($z);
+       $V=~s/(\d).*/$1/;
+    my $getv3={
             filter => {
                 value                    => 1,
                 only_true                => 1,
                 withUnacknowledgedEvents => 1,
             },
+            output     => ["hostid","triggerid", "description", "priority" ],
+            sortfield  => "triggerid",
+            sortorder  => "DESC",
+            selectHosts => "host",
 
-            # lastChangeSince => $ysterday,
-            output     => [ "triggerid", "description", "priority" ],
+    };
+
+    my $getv2={
+            filter => {
+                value                    => 1,
+                only_true                => 1,
+                withUnacknowledgedEvents => 1,
+            },
+            output     => ["hostid","triggerid", "description", "priority" ],
             sortfield  => "triggerid",
             sortorder  => "DESC",
             expandData => "host",
+    };
 
-        },
-    );
     my $hresult;
-    my $host = $r->{'result'};
-    for (@$host) {
-        my $etime = getTgtime( $z, $_->{'triggerid'}, $_->{'host'} );
+   
+ if ($V eq "2") {
+        my $r = $z->get("trigger",$getv2);
+        my $host=$r->{'result'};
+        for (@$host) {
+        my $hostid   = gethostID( $z, $_->{'host'});
+        my $etime = getTgtime( $z, $_->{'triggerid'}, $hostid );
         next unless $etime;
         my $time = strftime( "%Y-%m-%d %H:%M:%S", localtime($etime) );
         $hresult->{$etime} =
           "$time : $_->{'host'}: " . $_->{'description'} . "\n";
+        }
+   }
+   else {
+ 
+        my $r=  $z->get("trigger",$getv3);
+        my $host=$r->{'result'};
+         for (@$host) {
+        my $hostid = $_->{'hosts'}->[0]->{'hostid'};
+        my $host=getHost($z,$hostid);
+        my $etime = getTgtime( $z, $_->{'triggerid'}, $_->{'hosts'}->[0]->{'hostid'} );
+        next unless $etime;
+        my $time = strftime( "%Y-%m-%d %H:%M:%S", localtime($etime) );
+           $hresult->{$etime} =
+          "$time : $host  " . $_->{'description'} . "\n";
     }
-
+   }   
     return $hresult;
 }
 
 ### 给定触发器，触发器处罚时间(限制24小时候内的).
+
 sub getTgtime {
 
     my ( $z, $tgid, $host ) = @_;
-
-    my $hostid   = gethostID( $z, $host );
-    my $ysterday = time() - 15 * 3600;
+    my $hostid=$host;
+    #my $hostid   = gethostID( $z, $host );
+    my $ysterday = time() - 20 * 3600;
     my $vkey     = $tgid . $hostid;
     unless ( exists $EVcache{$vkey} ) {
         my $r = $z->get(
@@ -367,13 +453,14 @@ sub getTgtime {
     return $EVcache{$vkey};
 }
 
+
 sub getEvent {
     my $z        = shift;
     my $ysterday = time() - 1 * 3600;
     my $r        = $z->get(
         "event",
         {
-            filter => {
+         filter => {
 
                 # value => 1,
                 acknowledged => 0,
@@ -396,22 +483,54 @@ sub getEvent {
     return $hresult;
 }
 
+
+sub getEvents {
+    my $z        = shift;
+    my $ysterday = time() - 15 * 3600;
+    my $r        = $z->get(
+        "event",{
+            #filter => {
+
+               # value => 1,
+               # acknowledged => 0,
+
+                #time_from=> "$ysterday",
+           # },
+            acknowledged =>0,
+            value => 1,
+            time_from           => "$ysterday",
+            output              => "extend",
+           # select_acknowledges=> "extend",
+            source              => 0,
+            sortfield =>["clock", "eventid"],
+            sortorder => "DESC",
+            expandData=>"host",
+
+        },
+    );
+    my $hresult = Dumper($r);
+    my $result=$r->{'result'} if $r->{'result'};
+    # print getTrigger($z,$_->{'objectid'}) for(@$result); 
+    #return $hresult;
+}
+
 sub getAlert {
     my $z        = shift;
     my $ysterday = time() - 24 * 3600;
     my $r        = $z->get(
         "alert",
         {
+#            time_from           => "$ysterday",
             output => "extend",
             sortfield => ["clock"],
             sortorder => "DESC",
 
         },
     );
-    my $host    = $r;
     my $hresult = Dumper($r);
     return $hresult;
 }
+
 
 =head1 AUTHOR
 
